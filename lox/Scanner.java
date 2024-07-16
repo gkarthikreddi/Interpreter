@@ -78,6 +78,15 @@ class Scanner {
                 if (match('/')) {
                     // A comment goes until the end of line.
                     while (peek() != '\n' && !isAtEnd()) advance();
+                // challenge 4 of scanner module
+                } else if (match('*')) {
+                    while ((peek() != '*' || peekNext() != '/') && !isAtEnd()) advance();
+
+                    if (isAtEnd()) {
+                        Lox.error(line, "Incomplete comment.");
+                    } else {
+                        current += 2;
+                    }
                 } else {
                     addToken(SLASH);
                 }
