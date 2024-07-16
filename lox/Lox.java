@@ -1,4 +1,4 @@
-package com.interpreter.lox;
+package craftinginterpreter.lox;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -50,7 +50,6 @@ public class Lox {
         // Initially we are just printing the tokens
         for (Token token : tokens)
             System.out.println(token);
-        
     }
 
     static void error(int line, String message) {
