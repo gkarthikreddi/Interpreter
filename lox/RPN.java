@@ -27,6 +27,11 @@ class RPN implements Expr.Visitor<String> {
         return expr.value.toString();
     }
 
+    @Override
+    public String visitConditionalExpr(Expr.Conditional expr) {
+        return expr.base.accept(this) + " " + expr.left.accept(this) + " " + expr.right.accept(this);
+    }
+
     public static void main(String[] args) {
         Expr exp = new Expr.Binary(
                 new Expr.Binary(

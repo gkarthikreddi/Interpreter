@@ -18,5 +18,8 @@ enum TokenType {
     AND, CLASS, ELSE, FOR, WHILE, THIS, SUPER, IF, NIL,
     OR, PRINT, RETURN, VAR, FALSE, TRUE, FUN,
 
+    // This is callenge from (Paresing Expressions) to implment ternary operator
+    QUESTION, COLON,
+
     EOF
 }

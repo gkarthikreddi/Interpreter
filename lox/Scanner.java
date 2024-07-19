@@ -62,6 +62,7 @@ class Scanner {
             case '+': addToken(PLUS); break;
             case ';': addToken(SEMICOLON); break;
             case '*': addToken(STAR); break;
+
             case '!':
                 addToken(match('=') ? BANG_EQUAL : BANG);
                 break;
@@ -92,6 +93,18 @@ class Scanner {
                 }
                 break;
 
+            // Implementing ternary
+            case '?':
+                addToken(QUESTION);
+                if (!verify())
+                    Lox.error(line, "Improper use of ternary operator");
+                break;
+            case ':':
+                addToken(COLON);
+                if (!verify())
+                    Lox.error(line, "Improper use of ternary operator");
+                break;
+
             case ' ':
             case '\r':
             case '\t':
@@ -111,6 +124,7 @@ class Scanner {
                 } else {
                     Lox.error(line, "Unexpected character");
                 }
+
                 break;
         }
     }
@@ -201,5 +215,21 @@ class Scanner {
 
     private boolean isAtEnd() {
         return current >= source.length();
+    }
+
+    // Implementing ternary
+    private boolean verify() {
+        int size = tokens.size()-1;
+        if (size == 0 || source.length() < 4) return false;
+        if (tokens.get(size-1).type == QUESTION ||
+                tokens.get(size-1).type == COLON) return false;
+
+        TokenType type = tokens.get(size).type;
+        if (type == COLON) {
+            if (size < 2) return false;
+            if (tokens.get(size-2).type != QUESTION) return false;
+        } 
+
+        return true;
     }
 }

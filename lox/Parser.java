@@ -23,7 +23,35 @@ class Parser {
     }
 
     private Expr expression() {
+        // To implement (Parsing Expression) challenge 1&2 uncomment the below line.
+        //return comma();
         return equality();
+    }
+    
+    // Below method is challenge 1 implemetation of (Parsing Representation).
+    private Expr comma() {
+        Expr expr = ternary();
+
+        while(match(COMMA)) {
+            Token token = previous();
+            Expr right = ternary();
+            expr = new Expr.Binary(expr, token, right);
+        }
+
+        return expr;
+    }
+
+    // Below method is challenge 2 implementation of (Parsing Representaion)
+    private Expr ternary() {
+        Expr expr = equality();
+
+        if (!match(QUESTION)) return expr;
+        Expr left = ternary();
+        advance();
+        Expr right = equality();
+        expr = new Expr.Conditional(expr, left, right);
+
+        return expr;
     }
 
     private Expr equality() {
@@ -97,6 +125,13 @@ class Parser {
             Expr expr = expression();
             consume(RIGHT_PAREN, "Expect ')' after expression.");
             return new Expr.Grouping(expr);
+        }
+        
+        // Challenge 3 of (Parsing Expressions).
+        if (match(PLUS, STAR, SLASH)) {
+            System.err.println(previous().lexeme + 
+                    " Binary operation at the start of expression.");
+            return primary();
         }
 
         throw error(peek(), "Except expression");
