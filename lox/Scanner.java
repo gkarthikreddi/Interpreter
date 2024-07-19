@@ -227,7 +227,6 @@ class Scanner {
         TokenType type = tokens.get(size).type;
         if (type == COLON) {
             if (size < 2) return false;
-            if (tokens.get(size-2).type != QUESTION) return false;
         } 
 
         return true;

@@ -24,8 +24,8 @@ class Parser {
 
     private Expr expression() {
         // To implement (Parsing Expression) challenge 1&2 uncomment the below line.
-        //return comma();
-        return equality();
+        return comma();
+        //return equality();
     }
     
     // Below method is challenge 1 implemetation of (Parsing Representation).
