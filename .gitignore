@@ -1,3 +1,2 @@
-.git/
-lox/craftinginterpreter/
-tool/craftinginterpreter/
+/lox/craftinginterpreter/
+/tool/craftinginterpreter/

@@ -1,5 +1,6 @@
 package craftinginterpreter.lox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static craftinginterpreter.lox.TokenType.*;
@@ -14,6 +15,7 @@ class Parser {
         this.tokens = tokens;
     }
 
+    /*
     Expr parse() {
         try {
             return expression();
@@ -21,13 +23,95 @@ class Parser {
             return null;
         }
     }
+    */
+    List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!isAtEnd()) {
+            statements.add(declaration());
+        }
 
-    private Expr expression() {
-        // To implement (Parsing Expression) challenge 1&2 uncomment the below line.
-        return comma();
-        //return equality();
+        return statements;
+    }
+
+    private Stmt declaration() {
+        try {
+            if (match(VAR)) return varDeclaration();
+
+            return statement();
+        } catch (ParseError error) {
+            synchronize();
+            return null;
+        }
+    }
+
+    private Stmt varDeclaration() {
+        Token name = consume(IDENTIFIER, "Expected variable name.");
+
+        Expr initializer = null;
+        if (match(EQUAL)) {
+            initializer = expression();
+        }
+
+        consume(SEMICOLON, "Expected ';' after variable declaration.");
+        return new Stmt.Var(name , initializer);
+    }
+
+    private Stmt statement() {
+        if (match(PRINT)) return printStatement();
+        if (match(LEFT_BRACE)) return new Stmt.Block(block());
+
+        return expressionStatement();
+    }
+
+    private Stmt printStatement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expecteed ';' at the end.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt expressionStatement() {
+        Expr expr = expression();
+        consume(SEMICOLON, "Expecteed ';' at the end.");
+        return new Stmt.Expression(expr);
+    }
+
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
+
+        while (!check(RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(declaration());
+        }
+
+        consume(RIGHT_BRACE, "Expected '}' after block");
+        return statements;
+    }
+
+    private Expr assignment() {
+        Expr expr = comma(); // change it to equality() for the original code
+
+        if (match(EQUAL)) {
+            Token equal = previous();
+            Expr value = assignment();
+
+            if (expr instanceof Expr.Variable) {
+                Token name =  ((Expr.Variable)expr).name;
+                return new Expr.Assign(name, value);
+            }
+
+            error(equal, "Invalid assignment target.");
+        }
+        
+        return expr;
     }
     
+    private Expr expression() {
+        // To implement (Parsing Expression) challenge 1&2 uncomment the below line.
+        //return comma();
+
+        //return equality();
+        return assignment();
+    }
+
     // Below method is challenge 1 implemetation of (Parsing Representation).
     private Expr comma() {
         Expr expr = ternary();
@@ -132,6 +216,10 @@ class Parser {
             System.err.println(previous().lexeme + 
                     " Binary operation at the start of expression.");
             return primary();
+        }
+
+        if (match(IDENTIFIER)) {
+            return new Expr.Variable(previous());
         }
 
         throw error(peek(), "Except expression");
