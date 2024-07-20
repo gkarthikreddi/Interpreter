@@ -3,6 +3,7 @@ package craftinginterpreter.lox;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 
 import static craftinginterpreter.lox.TokenType.*;
@@ -224,9 +225,14 @@ class Scanner {
         if (tokens.get(size-1).type == QUESTION ||
                 tokens.get(size-1).type == COLON) return false;
 
-        TokenType type = tokens.get(size).type;
-        if (type == COLON) {
+        List<TokenType> types = new ArrayList<>();
+        for (Token token : tokens)
+            types.add(token.type);
+
+        if (tokens.get(size).type == COLON) {
             if (size < 2) return false;
+            if (Collections.frequency(types, QUESTION)
+                    < Collections.frequency(types, COLON)) return false;
         } 
 
         return true;

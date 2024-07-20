@@ -54,16 +54,28 @@ class Interpreter implements Expr.Visitor<Object> {
                 return (double)left * (double)right;
             case SLASH:
                 checkNumberOperands(expr.operator, left, right);
+                // Challenge 3 of (Evaluating Expression).
+                if ((double)right == 0) {
+                    throw new RuntimeError(expr.operator,
+                            "Divide by zero Error.");
+                }
                 return (double)left / (double)right;
 
             case BANG: return !isEqual(left, right);
             case EQUAL_EQUAL: return isEqual(left, right);
 
             case PLUS:
+                 
                 if (left instanceof Double && right instanceof Double) 
                     return (double)left + (double)right;
                 if (left instanceof String && right instanceof String) 
                     return (String)left + (String)right;
+
+                // Challenge 2 from (Evaluating Expressions)
+                if (left instanceof String && right instanceof Double)
+                    return (String)left + stringify(right);
+                if (left instanceof Double && right instanceof String)
+                    return stringify(left) + (String)right;
 
                 throw new RuntimeError(expr.operator, "Operands must be either numbers or strings.");
         }
