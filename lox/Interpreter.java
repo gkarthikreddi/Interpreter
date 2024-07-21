@@ -99,6 +99,9 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visitVariableExpr(Expr.Variable expr) {
+        // Challenge 2 of (Statements and States).
+        if (environment.get(expr.name) == null) throw new RuntimeError(expr.name, 
+                "Variable '"+expr.name.lexeme+"' not initialized.");
         return environment.get(expr.name);
     }
 
@@ -185,6 +188,11 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     private void execute(Stmt stmt) {
+        // Challenge 1 of (Statements and States).
+        if (stmt instanceof Stmt.Expression) {
+            visitPrintStmt(new Stmt.Print(((Stmt.Expression)stmt).expression));
+            return;
+        }
         stmt.accept(this);
     }
 
