@@ -80,10 +80,9 @@ class Scanner {
                 if (match('/')) {
                     // A comment goes until the end of line.
                     while (peek() != '\n' && !isAtEnd()) advance();
-                // challenge 4 of scanner module
                 } else if (match('*')) {
+                    // challenge 4 of scanner module
                     while ((peek() != '*' || peekNext() != '/') && !isAtEnd()) advance();
-
                     if (isAtEnd()) {
                         Lox.error(line, "Incomplete comment.");
                     } else {
@@ -130,6 +129,47 @@ class Scanner {
         }
     }
 
+    private void string() {
+        while (peek() != '"' && !isAtEnd()) {
+            if (peek() == '\n') line++;
+            advance();
+        }
+
+        if (isAtEnd()) {
+            Lox.error(line, "Unexpected string.");
+            return;
+        }
+
+        // The closing ".
+        advance();
+
+        // Trim the surrounding quotes
+        String text = source.substring(start+1, current-1);
+        addToken(STRING, text);
+    }
+
+    private void number() {
+        while (isDigit(peek())) advance();
+
+        if (peek() == '.' && isDigit(peekNext())) {
+            // consume the '.'
+            advance();
+
+            while (isDigit(peek())) advance();
+        }
+
+        addToken(NUMBER, Double.parseDouble(source.substring(start, current)));
+    }
+    
+    private void identifier() {
+        while (isAlphaNumeric(peek())) advance();
+        
+        String text = source.substring(start, current);
+        TokenType type = keywords.get(text);
+        if (type == null) type = IDENTIFIER;
+        addToken(type);
+    }
+
     private char advance() {
         return source.charAt(current++);
     }
@@ -156,45 +196,17 @@ class Scanner {
         return source.charAt(current);
     }
 
-    private void string() {
-        while (peek() != '"' && !isAtEnd()) {
-            if (peek() == '\n') line++;
-            advance();
-        }
-
-        if (isAtEnd()) {
-            Lox.error(line, "Unexpected string.");
-            return;
-        }
-
-        // The closing ".
-        advance();
-
-        // Trim the surrounding quotes
-        String text = source.substring(start+1, current-1);
-        addToken(STRING, text);
-    }
-
-    private boolean isDigit(char c) {
-        return c >= '0' && c <= '9';
-    }
-
-    private void number() {
-        while (isDigit(peek())) advance();
-
-        if (peek() == '.' && isDigit(peekNext())) {
-            // consume the '.'
-            advance();
-
-            while (isDigit(peek())) advance();
-        }
-
-        addToken(NUMBER, Double.parseDouble(source.substring(start, current)));
-    }
-
     private char peekNext() {
         if (current + 1 >= source.length()) return '\0';
         return source.charAt(current+1);
+    }
+   
+    private boolean isAtEnd() {
+        return current >= source.length();
+    }
+    
+    private boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
     }
 
     private boolean isAlpha(char c) {
@@ -203,19 +215,6 @@ class Scanner {
 
     private boolean isAlphaNumeric(char c) {
         return isAlpha(c) || isDigit(c);
-    }
-
-    private void identifier() {
-        while (isAlphaNumeric(peek())) advance();
-        
-        String text = source.substring(start, current);
-        TokenType type = keywords.get(text);
-        if (type == null) type = IDENTIFIER;
-        addToken(type);
-    }
-
-    private boolean isAtEnd() {
-        return current >= source.length();
     }
 
     // Implementing ternary
@@ -231,8 +230,8 @@ class Scanner {
 
         if (tokens.get(size).type == COLON) {
             if (size < 2) return false;
-            if (Collections.frequency(types, QUESTION)
-                    < Collections.frequency(types, COLON)) return false;
+            if (Collections.frequency(types, QUESTION) < Collections.frequency(types, COLON)) 
+                return false;
         } 
 
         return true;

@@ -24,50 +24,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
-    public Object visitLiteralExpr(Expr.Literal expr) {
-        return expr.value;
-    }
-
-    @Override
-    public Object visitGroupingExpr(Expr.Grouping expr) {
-        return evaluate(expr.expression);
-    }
-
-    @Override
-    public Object visitUnaryExpr(Expr.Unary expr) {
-        Object right = evaluate(expr.right);
-
-        switch(expr.operator.type) {
-            case BANG:
-                return !isTruthy(right);
-            case MINUS:
-                checkNumberOperand(expr.operator, right);
-                return -(double)right;
-        }
-
-        // Unreachable.
-        return null;
-    }
-
-    @Override
-    public Object visitCallExpr(Expr.Call expr) {
-        Object callee = evaluate(expr.callee);
-
-        List<Object> arguments = new ArrayList<>();
-        for (Expr argument : expr.arguments) {
-            arguments.add(evaluate(argument));
-        }
-
-        if (!(callee instanceof LoxCallable)) {
-            throw new RuntimeError(expr.paren, "Can only call funcitons and classes");
-        }
-
-        LoxCallable function = (LoxCallable)callee;
-        if (arguments.size() != function.arity()) {
-            throw new RuntimeError(expr.paren, "Expected " + function.arity() +
-                    " arguments but got " + arguments.size());
-        }
-        return function.call(this, arguments); 
+    public Object visitAssignExpr(Expr.Assign expr) {
+        Object value = evaluate(expr.value);
+        environment.assign(expr.name, value);
+        return value;
     }
 
     @Override
@@ -105,49 +65,58 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
             case BANG: return !isEqual(left, right);
             case EQUAL_EQUAL: return isEqual(left, right);
-    
-            // Challenge from (Parsing Expressions).
+
+                              // Challenge from (Parsing Expressions).
             case COMMA: return right;
 
             case PLUS:
-                 
-                if (left instanceof Double && right instanceof Double) 
-                    return (double)left + (double)right;
-                if (left instanceof String && right instanceof String) 
-                    return (String)left + (String)right;
+                        if (left instanceof Double && right instanceof Double) 
+                            return (double)left + (double)right;
+                        if (left instanceof String && right instanceof String) 
+                            return (String)left + (String)right;
 
-                // Challenge 2 from (Evaluating Expressions)
-                if (left instanceof String && right instanceof Double)
-                    return (String)left + stringify(right);
-                if (left instanceof Double && right instanceof String)
-                    return stringify(left) + (String)right;
+                        // Challenge 2 from (Evaluating Expressions)
+                        if (left instanceof String && right instanceof Double)
+                            return (String)left + stringify(right);
+                        if (left instanceof Double && right instanceof String)
+                            return stringify(left) + (String)right;
 
-                throw new RuntimeError(expr.operator, "Operands must be either numbers or strings.");
+                        throw new RuntimeError(expr.operator, "Operands must be either numbers or strings.");
         }
 
         // Unreachable.
         return null;
     }
-    
-    // Implementation of ternary operator from (Parsing Expressions) challenge for forward compatability.
+
     @Override
-    public Object visitConditionalExpr(Expr.Conditional expr) {
-        return isTruthy(evaluate(expr.base)) ? evaluate(expr.left) : evaluate(expr.right);
+    public Object visitCallExpr(Expr.Call expr) {
+        Object callee = evaluate(expr.callee);
+
+        List<Object> arguments = new ArrayList<>();
+        for (Expr argument : expr.arguments) {
+            arguments.add(evaluate(argument));
+        }
+
+        if (!(callee instanceof LoxCallable)) {
+            throw new RuntimeError(expr.paren, "Can only call funcitons and classes");
+        }
+
+        LoxCallable function = (LoxCallable)callee;
+        if (arguments.size() != function.arity()) {
+            throw new RuntimeError(expr.paren, "Expected " + function.arity() +
+                    " arguments but got " + arguments.size());
+        }
+        return function.call(this, arguments); 
     }
 
     @Override
-    public Object visitVariableExpr(Expr.Variable expr) {
-        // Challenge 2 of (Statements and States).
-        if (environment.get(expr.name) == null) throw new RuntimeError(expr.name, 
-                "Variable '"+expr.name.lexeme+"' not initialized.");
-        return environment.get(expr.name);
+    public Object visitGroupingExpr(Expr.Grouping expr) {
+        return evaluate(expr.expression);
     }
 
     @Override
-    public Object visitAssignExpr(Expr.Assign expr) {
-        Object value = evaluate(expr.value);
-        environment.assign(expr.name, value);
-        return value;
+    public Object visitLiteralExpr(Expr.Literal expr) {
+        return expr.value;
     }
 
     @Override
@@ -161,6 +130,36 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
 
         return evaluate(expr.right);
+    }
+
+    @Override
+    public Object visitUnaryExpr(Expr.Unary expr) {
+        Object right = evaluate(expr.right);
+
+        switch(expr.operator.type) {
+            case BANG:
+                return !isTruthy(right);
+            case MINUS:
+                checkNumberOperand(expr.operator, right);
+                return -(double)right;
+        }
+
+        // Unreachable.
+        return null;
+    }
+
+    @Override
+    public Object visitVariableExpr(Expr.Variable expr) {
+        // Challenge 2 of (Statements and States).
+        if (environment.get(expr.name) == null) throw new RuntimeError(expr.name, 
+                "Variable '"+expr.name.lexeme+"' not initialized.");
+        return environment.get(expr.name);
+    }
+
+    // Implementation of ternary operator from (Parsing Expressions) challenge for forward compatability.
+    @Override
+    public Object visitConditionalExpr(Expr.Conditional expr) {
+        return isTruthy(evaluate(expr.base)) ? evaluate(expr.left) : evaluate(expr.right);
     }
 
     @Override
@@ -271,16 +270,6 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return object.toString();
     }
 
-    private void execute(Stmt stmt) {
-        /* Challenge 1 of (Statements and States).
-        if (stmt instanceof Stmt.Expression) {
-            visitPrintStmt(new Stmt.Print(((Stmt.Expression)stmt).expression));
-            return;
-        }
-        */
-        stmt.accept(this);
-    }
-
     public void executeBlock(List<Stmt> statements, Environment environment) {
         Environment previous = this.environment;
         try {
@@ -292,6 +281,16 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         } finally {
             this.environment = previous;
         }
+    }
+
+    private void execute(Stmt stmt) {
+        /* Challenge 1 of (Statements and States).
+           if (stmt instanceof Stmt.Expression) {
+           visitPrintStmt(new Stmt.Print(((Stmt.Expression)stmt).expression));
+           return;
+           }
+           */
+        stmt.accept(this);
     }
 
     void interpret(List<Stmt> statements) {
