@@ -4,11 +4,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.TreeSet;
+import java.sql.Array;
+import java.util.ArrayList;
+import java.util.Collections;
 
 class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     private final Interpreter interpreter;
     private final Stack<Map<String, Boolean>> scopes = new Stack<>();
     private FunctionType currentFunction = FunctionType.NONE;
+    private ClassType currentClass = ClassType.NONE;
+    // Challenge 3 from (Resolving and Binding).
+    private final ArrayList<ArrayList<String>> usedVariables = new ArrayList<>();
 
     Resolver(Interpreter interpreter) {
         this.interpreter = interpreter;
@@ -16,14 +23,47 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private enum FunctionType {
         NONE,
-        FUNCTION
+        FUNCTION,
+        INITIALIZER,
+        METHOD
+    }
+
+    private enum ClassType {
+        NONE,
+        CLASS
     }
 
     @Override
     public Void visitBlockStmt(Stmt.Block stmt) {
         beginScope();
         resolve(stmt.statements);
+        unusedVariable();
         endScope();
+        return null;
+    }
+
+    @Override
+    public Void visitClassStmt(Stmt.Class stmt) {
+        ClassType enclosingClass = currentClass;
+        currentClass = ClassType.CLASS;
+
+        declare(stmt.name);
+        define(stmt.name);
+
+        beginScope();
+        scopes.peek().put("this", true);
+
+        for (Stmt.Function method : stmt.methods) {
+            FunctionType type = FunctionType.METHOD;
+            if (method.name.lexeme.equals("init")) {
+                type = FunctionType.INITIALIZER;
+            }
+            resolveFunction(method, type);
+        }
+
+        endScope();
+
+        currentClass = enclosingClass;
         return null;
     }
 
@@ -62,7 +102,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
             Lox.error(stmt.keyword, "Can't return from top-level code.");
         }
 
-        if (stmt.value != null) resolve(stmt.value);
+        if (stmt.value != null) {
+            if (currentFunction == FunctionType.INITIALIZER) {
+                Lox.error(stmt.keyword, "Can't return a value from initializer.");
+            }
+        }
+
+        resolve(stmt.value);
         return null;
     }
 
@@ -119,6 +165,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitGetExpr(Expr.Get expr) {
+        resolve(expr.object);
+        return null;
+    }
+
+    @Override
     public Void visitGroupingExpr(Expr.Grouping expr) {
         resolve(expr.expression);
         return null;
@@ -135,6 +187,24 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         resolve(expr.left);
         return null;
     }
+
+    @Override
+    public Void visitSetExpr(Expr.Set expr) {
+        resolve(expr.value);
+        resolve(expr.object);
+        return null;
+    }
+
+    @Override
+    public Void visitThisExpr(Expr.This expr) {
+        if (currentClass == ClassType.NONE) {
+            Lox.error(expr.keyword, "Can't use 'this' outside of class.");
+            return null;
+        }
+        resolveLocal(expr, expr.keyword);
+        return null;
+    }
+
 
     @Override
     public Void visitUnaryExpr(Expr.Unary expr) {
@@ -167,6 +237,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         }
 
         resolve(function.body);
+        unusedVariable();
         endScope();
         currentFunction = enclosingFunction;
     }
@@ -181,10 +252,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private void beginScope() {
         scopes.push(new HashMap<String, Boolean>());
+        usedVariables.add(new ArrayList<>());
     }
 
     private void endScope() {
         scopes.pop();
+        usedVariables.remove(usedVariables.size()-1);
     }
 
     private void declare(Token name) {
@@ -204,7 +277,19 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     private void resolveLocal(Expr expr, Token name) {
         for (int i = scopes.size()-1; i >= 0; i--) {
             if (scopes.get(i).containsKey(name.lexeme)) {
-                interpreter.resolve(expr, scopes.size()-1-i);
+                int distance = scopes.size()-1-i;
+                interpreter.resolve(expr, distance);
+                usedVariables.get(usedVariables.size() - 1 - distance).add(name.lexeme);
+                return;
+            }
+        }
+    }
+
+    private void unusedVariable() {
+        for (String s : scopes.peek().keySet()) {
+            if (!usedVariables.get(usedVariables.size()-1).contains(s)) {
+                Lox.error(new Token(TokenType.STRING, s, s, 0),
+                        "Variable " + s + " is declared but not used.");
                 return;
             }
         }
