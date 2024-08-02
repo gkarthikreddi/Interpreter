@@ -14,6 +14,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     private final Stack<Map<String, Boolean>> scopes = new Stack<>();
     private FunctionType currentFunction = FunctionType.NONE;
     private ClassType currentClass = ClassType.NONE;
+    private BlockType currentBlock = BlockType.NONE;
     // Challenge 3 from (Resolving and Binding).
     private final ArrayList<ArrayList<String>> usedVariables = new ArrayList<>();
 
@@ -33,6 +34,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         CLASS,
         SUBCLASS
     }
+
+    private enum BlockType {
+        NONE,
+        BLOCK,
+    }
+
 
     @Override
     public Void visitBlockStmt(Stmt.Block stmt) {
@@ -127,9 +134,19 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitBreakStmt(Stmt.Break stmt) {
+        if (currentBlock == BlockType.NONE) {
+            Lox.error(stmt.keyword, "Can't use 'break' outside of loops.");
+        }
+        return null;
+    }
+
+    @Override
     public Void visitWhileStmt(Stmt.While stmt) {
+        currentBlock = BlockType.BLOCK;
         resolve(stmt.condition);
         resolve(stmt.body);
+        currentBlock = BlockType.NONE;
         return null;
     }
     

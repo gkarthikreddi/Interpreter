@@ -21,5 +21,8 @@ enum TokenType {
     // This is callenge from (Paresing Expressions) to implment ternary operator
     QUESTION, COLON,
 
+    // Challenge from Control Flow
+    BREAK,
+
     EOF
 }

@@ -114,7 +114,11 @@ class Parser {
         if (match(PRINT)) return printStatement();
         if (match(WHILE)) return whileStatement();
         if (match(LEFT_BRACE)) return new Stmt.Block(block());
-
+        if (match(BREAK)) {
+            Token keyword = previous();
+            consume(SEMICOLON, "Expected ';' after break.");
+            return new Stmt.Break(keyword);
+        }
         return expressionStatement();
     }
 
